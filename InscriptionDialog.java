@@ -51,7 +51,7 @@ public class InscriptionDialog extends JDialog {
     }
 
     private void inscrireUtilisateur(String nom, String prenom, String email, String motDePasse) {
-        String sql = "INSERT INTO utilisateurs (nom, prenom, email, mot_de_passe, role) VALUES (?, ?, ?, ?, 'utilisateur')";
+        String sql = "INSERT INTO utilisateurs (nom, prenom, email, mot_de_passe) VALUES (?, ?, ?, ?)";
         
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -72,5 +72,6 @@ public class InscriptionDialog extends JDialog {
             JOptionPane.showMessageDialog(this, "Erreur de connexion à la base de données.", "Erreur", JOptionPane.ERROR_MESSAGE);
         }
     }
+
 }
 

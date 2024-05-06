@@ -6,7 +6,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Vector;
+import java.util.ArrayList;
+import java.util.List;
 
 public class AjoutJeuDialog extends JDialog {
     /**
@@ -14,34 +15,41 @@ public class AjoutJeuDialog extends JDialog {
 	 */
 	private static final long serialVersionUID = -3568410995856060343L;
 	private JTextField txtTitre, txtDescription;
-    private JComboBox<Category> cmbCategorie; // Utilisation d'une classe interne Category pour stocker à la fois le nom et l'ID
+    private JComboBox<Category> cmbCategorie;
 
     public AjoutJeuDialog(JFrame owner) {
         super(owner, "Ajouter un jeu", true);
         setSize(400, 300);
-        setLayout(new GridLayout(4, 2, 10, 10));  // Improved layout
+        setLayout(new BorderLayout(10, 10)); // Utilisation d'un BorderLayout
 
-        add(new JLabel("Titre:"));
+        JPanel inputPanel = new JPanel(new GridLayout(3, 2, 10, 10)); // GridLayout pour les champs
+        inputPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
         txtTitre = new JTextField();
-        add(txtTitre);
+        inputPanel.add(new JLabel("Titre:"));
+        inputPanel.add(txtTitre);
 
-        add(new JLabel("Catégorie:"));
         cmbCategorie = new JComboBox<>(loadCategories());
-        add(cmbCategorie);
+        inputPanel.add(new JLabel("Catégorie:"));
+        inputPanel.add(cmbCategorie);
 
-        add(new JLabel("Description:"));
         txtDescription = new JTextField();
-        add(txtDescription);
+        inputPanel.add(new JLabel("Description:"));
+        inputPanel.add(txtDescription);
+
+        add(inputPanel, BorderLayout.CENTER);
 
         JButton btnSubmit = new JButton("Ajouter");
         btnSubmit.addActionListener(e -> submitGame());
-        add(btnSubmit);
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        buttonPanel.add(btnSubmit);
+        add(buttonPanel, BorderLayout.SOUTH);
 
         setLocationRelativeTo(owner);
     }
 
     private Category[] loadCategories() {
-        Vector<Category> categories = new Vector<>();
+        List<Category> categories = new ArrayList<>();
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement("SELECT id, nom FROM categories");
              ResultSet rs = stmt.executeQuery()) {

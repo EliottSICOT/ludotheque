@@ -11,6 +11,7 @@ public class AccueilPage extends JFrame {
     private boolean isConnected = false; // Gestion de l'état de connexion
     private String userRole = "guest"; // Rôle par défaut pour les utilisateurs non connectés
     private JMenuItem menuItemCatalogue;
+    private JMenu menuSession; // Nouveau menu pour la session
 
     public AccueilPage() {
         initializeWindow();
@@ -34,6 +35,12 @@ public class AccueilPage extends JFrame {
         menuBar.add(menuPrincipal);
         menuBar.add(menuUtilisateur);
         setJMenuBar(menuBar);
+    }
+
+    private void setupSessionMenu() {
+        menuSession = createSessionMenu();
+        JMenuBar menuBar = getJMenuBar();
+        menuBar.add(menuSession);
     }
 
     private JMenu createUserMenu() {
@@ -64,6 +71,20 @@ public class AccueilPage extends JFrame {
         return menu;
     }
 
+    private JMenu createSessionMenu() {
+        JMenu menu = new JMenu("Session");
+        JMenuItem menuItemDeconnexion = new JMenuItem("Déconnexion");
+        menuItemDeconnexion.addActionListener(e -> {
+            isConnected = false;
+            userRole = "guest";
+            menuItemCatalogue.setEnabled(false); // Désactiver le catalogue après déconnexion
+            getJMenuBar().remove(menuSession); // Retirer le menu de session
+            JOptionPane.showMessageDialog(this, "Déconnexion réussie.", "Déconnexion", JOptionPane.INFORMATION_MESSAGE);
+        });
+        menu.add(menuItemDeconnexion);
+        return menu;
+    }
+
     private void setupWelcomeLabel() {
         JLabel welcomeLabel = new JLabel("Bienvenue à la Ludothèque", SwingConstants.CENTER);
         welcomeLabel.setFont(new Font("Serif", Font.BOLD, 24));
@@ -82,16 +103,13 @@ public class AccueilPage extends JFrame {
             isConnected = true;
             userRole = connexionDialog.getUserRole();
             menuItemCatalogue.setEnabled(isConnected); // Active le menu catalogue après la connexion
+            setupSessionMenu(); // Ajouter le menu de session après la connexion
         }
     }
 
     private void showCataloguePage() {
-        if ("admin".equals(userRole)) {
-            CataloguePage cataloguePage = new CataloguePage(userRole);
-            cataloguePage.setVisible(true);
-        } else {
-            JOptionPane.showMessageDialog(this, "Accès au catalogue autorisé uniquement pour les administrateurs.", "Accès refusé", JOptionPane.WARNING_MESSAGE);
-        }
+        CataloguePage cataloguePage = new CataloguePage(userRole);
+        cataloguePage.setVisible(true);
     }
 
     public static void main(String[] args) {
