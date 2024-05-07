@@ -2,7 +2,6 @@ package ui;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.*;
 import java.sql.*;
 
 public class ConnexionDialog extends JDialog {
@@ -11,7 +10,8 @@ public class ConnexionDialog extends JDialog {
     private JPasswordField passwordField;
     private JButton loginButton;
     private boolean successfulLogin = false;
-    private String userRole = "guest";  // Valeur par défaut
+    private String userRole = "guest";  // Default role
+    private String userName;  // User's first name
 
     public ConnexionDialog(Frame owner) {
         super(owner, "Connexion", true);
@@ -23,7 +23,7 @@ public class ConnexionDialog extends JDialog {
     private void setupUI() {
         setLayout(new BorderLayout());
 
-        // Panneau pour les champs de saisie
+        // Panel for input fields
         JPanel inputPanel = new JPanel(new GridLayout(2, 2));
         inputPanel.add(new JLabel("Email:"));
         emailField = new JTextField(20);
@@ -33,30 +33,27 @@ public class ConnexionDialog extends JDialog {
         inputPanel.add(passwordField);
         add(inputPanel, BorderLayout.CENTER);
 
-        // Bouton de connexion
+        // Login button
         loginButton = new JButton("Login");
-        loginButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                attemptLogin(emailField.getText(), new String(passwordField.getPassword()));
-            }
-        });
+        loginButton.addActionListener(e -> attemptLogin(emailField.getText(), new String(passwordField.getPassword())));
         JPanel buttonPanel = new JPanel();
         buttonPanel.add(loginButton);
         add(buttonPanel, BorderLayout.SOUTH);
     }
 
-    // Tente une connexion
+    // Attempt to log in
     public void attemptLogin(String email, String password) {
         try (Connection conn = DatabaseConnection.getConnection()) {
-            String sql = "SELECT role_name FROM utilisateurs JOIN roles ON utilisateurs.role_id = roles.role_id WHERE email = ? AND mot_de_passe = ?";
+            String sql = "SELECT utilisateurs.prenom, roles.role_name FROM utilisateurs JOIN roles ON utilisateurs.role_id = roles.role_id WHERE email = ? AND mot_de_passe = ?";
             PreparedStatement stmt = conn.prepareStatement(sql);
             stmt.setString(1, email);
-            stmt.setString(2, password);
+            stmt.setString(2, password); // For real application hash password and check
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
                 successfulLogin = true;
+                userName = rs.getString("prenom");
                 userRole = rs.getString("role_name");
-                dispose(); // Ferme le dialogue après une connexion réussie
+                dispose(); // Close the dialog after successful login
             } else {
                 JOptionPane.showMessageDialog(this, "Identifiants incorrects", "Erreur de connexion", JOptionPane.ERROR_MESSAGE);
             }
@@ -71,5 +68,9 @@ public class ConnexionDialog extends JDialog {
 
     public String getUserRole() {
         return userRole;
+    }
+
+    public String getUserName() {
+        return userName;
     }
 }

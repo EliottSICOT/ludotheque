@@ -7,7 +7,7 @@ import java.sql.SQLException;
 public class DatabaseConnection {
     private static final String DATABASE_URL = "jdbc:mysql://localhost:3306/ludotheque";
     private static final String DATABASE_USER = "root";
-    private static final String DATABASE_PASSWORD = ""; // Mettez à jour avec votre mot de passe
+    private static final String DATABASE_PASSWORD = "root"; // Mettez à jour avec votre mot de passe
 
     public static Connection getConnection() {
         try {
