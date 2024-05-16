@@ -2,6 +2,10 @@ package ui;
 
 import javax.swing.*;
 import java.awt.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 
 public class AccueilPage extends JFrame {
     private static final long serialVersionUID = -1230935483694996925L;
@@ -13,7 +17,8 @@ public class AccueilPage extends JFrame {
     private String userName = "guest"; // Default name when not logged in
     private JLabel welcomeLabel;
     private JMenuItem menuItemDeconnexion, menuItemConnexion, menuItemCatalogue, menuItemEmprunterJeu;
-
+    private JMenuItem menuItemProfil;
+    
     public AccueilPage() {
         initializeWindow();
         setupMenuBar();
@@ -31,6 +36,7 @@ public class AccueilPage extends JFrame {
         JMenuBar menuBar = new JMenuBar();
         menuBar.add(createMainMenu());
         menuBar.add(createUserMenu());
+              
         setJMenuBar(menuBar);
     }
 
@@ -54,14 +60,17 @@ public class AccueilPage extends JFrame {
         JMenuItem menuItemInscription = new JMenuItem("Inscription");
         menuItemConnexion = new JMenuItem("Connexion");
         menuItemDeconnexion = new JMenuItem("Déconnexion");
+        menuItemProfil = new JMenuItem("Profil"); // Création du JMenuItem pour accéder au profil
 
         menuItemInscription.addActionListener(e -> showInscriptionDialog());
         menuItemConnexion.addActionListener(e -> showConnexionDialog());
         menuItemDeconnexion.addActionListener(e -> logout());
+        menuItemProfil.addActionListener(e -> showProfilPage()); // Ajout d'une action pour afficher le profil
 
         menu.add(menuItemInscription);
         menu.add(menuItemConnexion);
         menu.add(menuItemDeconnexion);
+        menu.add(menuItemProfil); // Ajout du JMenuItem au menu Utilisateur  
 
         updateMenuItems(); // Initial visibility setup
         return menu;
@@ -90,8 +99,36 @@ public class AccueilPage extends JFrame {
     }
 
     private void showEmpruntJeuDialog() {
-        EmpruntJeuDialog empruntJeuDialog = new EmpruntJeuDialog(this);
+        EmpruntJeuDialog empruntJeuDialog = new EmpruntJeuDialog(this, getDefaultCloseOperation());
         empruntJeuDialog.setVisible(true);
+    }
+    
+    private void showProfilPage() {
+        ConnexionDialog connexionDialog = new ConnexionDialog(this);
+        connexionDialog.setVisible(true);
+        if (connexionDialog.isSuccessful()) {
+            int userId = getUserIdByEmail(connexionDialog.getEmail()); // Récupérer l'ID de l'utilisateur
+            ProfilPage profilPage = new ProfilPage(userId);
+            profilPage.setVisible(true);
+        }
+    }
+    
+    private int getUserIdByEmail(String email) {
+        int userId = -1; // Valeur par défaut si l'ID n'est pas trouvé
+        String sql = "SELECT id FROM utilisateurs WHERE email = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, email);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                userId = rs.getInt("id");
+            } else {
+                JOptionPane.showMessageDialog(this, "Utilisateur introuvable pour l'email: " + email, "Erreur", JOptionPane.ERROR_MESSAGE);
+            }
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Erreur SQL: " + e.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
+        }
+        return userId;
     }
 
     private void logout() {

@@ -15,6 +15,7 @@ public class CataloguePage extends JFrame {
     private JTable table;
     private JTextField searchField;
     private JButton searchButton, addButton;
+    private JComboBox<String> categoryComboBox;
 
     public CataloguePage(String userRole) {
         setTitle("Catalogue des Jeux");
@@ -24,7 +25,7 @@ public class CataloguePage extends JFrame {
         setResizable(false);
 
         initUI(userRole);
-        loadData("");
+        loadData("", "Toutes les catégories");
     }
 
     private void initUI(String userRole) {
@@ -32,11 +33,27 @@ public class CataloguePage extends JFrame {
         searchPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
 
         searchField = new JTextField(20);
-        searchField.setFont(new Font("Arial", Font.PLAIN, 14)); 
+        searchField.setFont(new Font("Arial", Font.PLAIN, 14));
         searchButton = new JButton("Rechercher");
-        searchButton.setFont(new Font("Arial", Font.PLAIN, 14)); 
+        searchButton.setFont(new Font("Arial", Font.PLAIN, 14));
+        searchButton.setBackground(new Color(70, 130, 180));
+        searchButton.setForeground(Color.WHITE);
+        searchButton.setFocusPainted(false);
+        searchButton.addActionListener(this::searchAction);
+
+        categoryComboBox = new JComboBox<>();
+        categoryComboBox.setFont(new Font("Arial", Font.PLAIN, 14));
+        categoryComboBox.addItem("Toutes les catégories");
+        loadCategories();
+        categoryComboBox.addActionListener(this::categorySelectionChanged);
+
+        JPanel leftPanel = new JPanel(new BorderLayout(10, 10));
+        leftPanel.add(new JLabel("Catégorie:"), BorderLayout.NORTH);
+        leftPanel.add(categoryComboBox, BorderLayout.CENTER);
+
         searchPanel.add(searchField, BorderLayout.CENTER);
         searchPanel.add(searchButton, BorderLayout.EAST);
+        searchPanel.add(leftPanel, BorderLayout.WEST);
 
         add(searchPanel, BorderLayout.NORTH);
 
@@ -56,22 +73,20 @@ public class CataloguePage extends JFrame {
                 return component;
             }
         };
-        table.setFont(new Font("Arial", Font.PLAIN, 14)); 
+        table.setFont(new Font("Arial", Font.PLAIN, 14));
         table.setRowHeight(100); // Increase row height to accommodate images
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         JScrollPane scrollPane = new JScrollPane(table);
-        scrollPane.setBorder(new EmptyBorder(10, 10, 10, 10)); 
+        scrollPane.setBorder(new EmptyBorder(10, 10, 10, 10));
         add(scrollPane, BorderLayout.CENTER);
-
-        searchButton.addActionListener(this::searchAction);
 
         if ("admin".equals(userRole)) {
             addButton = new JButton("Ajouter un jeu");
-            addButton.setFont(new Font("Arial", Font.PLAIN, 14)); 
-            addButton.setBackground(new Color(50, 150, 50)); 
-            addButton.setForeground(Color.WHITE); 
-            addButton.setBorderPainted(false); 
-            addButton.setFocusPainted(false); 
+            addButton.setFont(new Font("Arial", Font.PLAIN, 14));
+            addButton.setBackground(new Color(50, 150, 50));
+            addButton.setForeground(Color.WHITE);
+            addButton.setBorderPainted(false);
+            addButton.setFocusPainted(false);
             addButton.addActionListener(this::addButtonAction);
 
             JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
@@ -81,14 +96,13 @@ public class CataloguePage extends JFrame {
         }
     }
 
-    private void loadData(String searchTerm) {
-        String sql = "SELECT j.id, j.titre, c.nom AS categorie, j.description, j.image_path FROM jeux j JOIN categories c ON j.categorie_id = c.id"
-                + (searchTerm.isEmpty() ? "" : " WHERE j.titre LIKE ?");
+    private void loadData(String searchTerm, String category) {
+        String sql = "SELECT j.id, j.titre, c.nom AS categorie, j.description, j.image_path FROM jeux j JOIN categories c ON j.categorie_id = c.id WHERE (? = 'Toutes les catégories' OR c.nom = ?) AND j.titre LIKE ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-            if (!searchTerm.isEmpty()) {
-                stmt.setString(1, "%" + searchTerm + "%");
-            }
+            stmt.setString(1, category);
+            stmt.setString(2, category);
+            stmt.setString(3, "%" + searchTerm + "%");
             ResultSet rs = stmt.executeQuery();
             DefaultTableModel model = new DefaultTableModel(new Object[]{"ID", "Titre", "Catégorie", "Description", "Image"}, 0);
             while (rs.next()) {
@@ -106,14 +120,34 @@ public class CataloguePage extends JFrame {
         }
     }
 
+    private void searchAction(ActionEvent e) {
+        String searchTerm = searchField.getText().trim();
+        String category = (String) categoryComboBox.getSelectedItem();
+        loadData(searchTerm, category);
+    }
+
+    private void loadCategories() {
+        String sql = "SELECT DISTINCT nom FROM categories";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                categoryComboBox.addItem(rs.getString("nom"));
+            }
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Erreur de base de données: " + e.getMessage(), "Erreur SQL", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void categorySelectionChanged(ActionEvent e) {
+        String selectedCategory = (String) categoryComboBox.getSelectedItem();
+        loadData(searchField.getText().trim(), selectedCategory);
+    }
+
     private void addButtonAction(ActionEvent e) {
         AjoutJeuDialog ajoutDialog = new AjoutJeuDialog(this);
         ajoutDialog.setVisible(true);
-        loadData("");
-    }
-
-    private void searchAction(ActionEvent e) {
-        loadData(searchField.getText().trim());
+        loadData(searchField.getText().trim(), (String) categoryComboBox.getSelectedItem());
     }
 
     public static void main(String[] args) {
@@ -145,6 +179,7 @@ public class CataloguePage extends JFrame {
     private static class ImageRenderer extends DefaultTableCellRenderer {
         private static final long serialVersionUID = -1028925336113040040L;
 
+        @Override
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
             JLabel label = new JLabel();
             if (value != null) {

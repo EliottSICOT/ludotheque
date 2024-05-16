@@ -1,87 +1,145 @@
 package ui;
 
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.sql.*;
+import java.awt.event.ActionEvent;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.Date;
 
 public class EmpruntJeuDialog extends JDialog {
-    private static final long serialVersionUID = -1037581564781367620L;
-    private JComboBox<String> comboBoxJeux;
-    private JSpinner dateEmpruntSpinner;
-    private JSpinner dateRetourSpinner;
-    private JButton emprunterButton;
+    private static final long serialVersionUID = 1046432724190753743L;
+    private JComboBox<ComboItem> comboBoxJeux;
+    private JTextField textFieldDateEmprunt;
+    private JSpinner spinnerDateRetour;
+    private JButton btnEmprunter;
+    private Connection connection;
+    private int utilisateurId;
 
-    public EmpruntJeuDialog(JFrame parent) {
-        super(parent, "Emprunter un Jeu", true);
-        setLayout(new GridLayout(4, 2, 10, 10));
-        initializeComponents();
-        setSize(400, 200);
-        setLocationRelativeTo(parent);
-        setVisible(true);
+    public EmpruntJeuDialog(JFrame parent, int utilisateurId) {
+        super(parent, "Emprunter un jeu", true);
+        this.utilisateurId = utilisateurId;
+        setupUI();
+        initializeDatabaseConnection();
+        loadGamesIntoComboBox();
+        setupActions();
     }
 
-    private void initializeComponents() {
+    private void setupUI() {
+        setSize(500, 400);
+        setLayout(new BorderLayout(10, 10));
+        JPanel mainPanel = new JPanel(new GridLayout(4, 2, 10, 10));
+        mainPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
+
+        JLabel lblJeu = new JLabel("Sélectionner le jeu:");
+        lblJeu.setFont(new Font("SansSerif", Font.BOLD, 16));
         comboBoxJeux = new JComboBox<>();
-        fillGameTitles();
-        add(new JLabel("Jeu :"));
-        add(comboBoxJeux);
+        comboBoxJeux.setFont(new Font("SansSerif", Font.PLAIN, 16));
+        mainPanel.add(lblJeu);
+        mainPanel.add(comboBoxJeux);
 
-        dateEmpruntSpinner = new JSpinner(new SpinnerDateModel());
-        JSpinner.DateEditor deEmprunt = new JSpinner.DateEditor(dateEmpruntSpinner, "dd/MM/yyyy");
-        dateEmpruntSpinner.setEditor(deEmprunt);
-        add(new JLabel("Date d'emprunt :"));
-        add(dateEmpruntSpinner);
+        JLabel lblDateEmprunt = new JLabel("Date d'emprunt (dd-MM-yyyy):");
+        lblDateEmprunt.setFont(new Font("SansSerif", Font.BOLD, 16));
+        textFieldDateEmprunt = new JTextField(LocalDate.now().toString());
+        textFieldDateEmprunt.setEditable(false);
+        textFieldDateEmprunt.setFont(new Font("SansSerif", Font.PLAIN, 16));
+        mainPanel.add(lblDateEmprunt);
+        mainPanel.add(textFieldDateEmprunt);
 
-        dateRetourSpinner = new JSpinner(new SpinnerDateModel());
-        JSpinner.DateEditor deRetour = new JSpinner.DateEditor(dateRetourSpinner, "dd/MM/yyyy");
-        dateRetourSpinner.setEditor(deRetour);
-        add(new JLabel("Date de retour prévue :"));
-        add(dateRetourSpinner);
+        JLabel lblDateRetour = new JLabel("Date de retour prévue:");
+        lblDateRetour.setFont(new Font("SansSerif", Font.BOLD, 16));
+        spinnerDateRetour = new JSpinner(new SpinnerDateModel());
+        JSpinner.DateEditor dateEditor = new JSpinner.DateEditor(spinnerDateRetour, "dd-MM-yyyy");
+        spinnerDateRetour.setEditor(dateEditor);
+        spinnerDateRetour.setValue(Date.from(LocalDate.now().plusDays(7).atStartOfDay(ZoneId.systemDefault()).toInstant()));
+        spinnerDateRetour.setFont(new Font("SansSerif", Font.PLAIN, 16));
+        mainPanel.add(lblDateRetour);
+        mainPanel.add(spinnerDateRetour);
 
-        emprunterButton = new JButton("Emprunter");
-        emprunterButton.addActionListener(e -> registerBorrowing());
-        add(emprunterButton);
+        add(mainPanel, BorderLayout.CENTER);
+
+        btnEmprunter = new JButton("Emprunter");
+        btnEmprunter.setFont(new Font("SansSerif", Font.BOLD, 16));
+        btnEmprunter.setBackground(new Color(50, 150, 50));
+        btnEmprunter.setForeground(Color.WHITE);
+        btnEmprunter.setFocusPainted(false);
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        buttonPanel.setBorder(new EmptyBorder(0, 20, 20, 20));
+        buttonPanel.add(btnEmprunter);
+        add(buttonPanel, BorderLayout.SOUTH);
     }
 
-    private void fillGameTitles() {
-        try (Connection conn = DatabaseConnection.getConnection()) {
-            String sql = "SELECT titre FROM jeux ORDER BY titre";
-            PreparedStatement stmt = conn.prepareStatement(sql);
-            ResultSet rs = stmt.executeQuery();
-            while (rs.next()) {
-                comboBoxJeux.addItem(rs.getString("titre"));
+    private void initializeDatabaseConnection() {
+        connection = DatabaseConnection.getConnection();
+    }
+
+    private void loadGamesIntoComboBox() {
+        String sql = "SELECT id, titre FROM jeux WHERE disponible = TRUE";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            ResultSet resultSet = statement.executeQuery();
+            while (resultSet.next()) {
+                comboBoxJeux.addItem(new ComboItem(resultSet.getString("titre"), resultSet.getInt("id")));
             }
-        } catch (SQLException e) {
-            JOptionPane.showMessageDialog(this, "Erreur lors de la récupération des jeux: " + e.getMessage(), "Erreur SQL", JOptionPane.ERROR_MESSAGE);
+        } catch (SQLException ex) {
+            JOptionPane.showMessageDialog(this, "Erreur lors du chargement des jeux: " + ex.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    private void registerBorrowing() {
-        String selectedGame = (String) comboBoxJeux.getSelectedItem();
-        Date empruntDate = (Date) ((SpinnerDateModel) dateEmpruntSpinner.getModel()).getDate();
-        Date retourDate = (Date) ((SpinnerDateModel) dateRetourSpinner.getModel()).getDate();
-        
-        try (Connection conn = DatabaseConnection.getConnection()) {
-            String sql = "INSERT INTO emprunts (jeu_id, utilisateur_id, date_emprunt, date_retour_prevue) VALUES ((SELECT id FROM jeux WHERE titre = ?), ?, ?, ?)";
-            PreparedStatement stmt = conn.prepareStatement(sql);
-            stmt.setString(1, selectedGame);
-            stmt.setInt(2, getCurrentUserId());
-            stmt.setDate(3, new java.sql.Date(empruntDate.getTime()));
-            stmt.setDate(4, new java.sql.Date(retourDate.getTime()));
+    private void setupActions() {
+        btnEmprunter.addActionListener(this::emprunterJeu);
+    }
 
-            int result = stmt.executeUpdate();
-            if (result > 0) {
-                JOptionPane.showMessageDialog(this, "Emprunt enregistré avec succès!", "Succès", JOptionPane.INFORMATION_MESSAGE);
-            } else {
-                JOptionPane.showMessageDialog(this, "Échec de l'enregistrement de l'emprunt.", "Échec", JOptionPane.ERROR_MESSAGE);
-            }
-        } catch (SQLException e) {
-            JOptionPane.showMessageDialog(this, "Erreur SQL: " + e.getMessage(), "Erreur SQL", JOptionPane.ERROR_MESSAGE);
+    private void emprunterJeu(ActionEvent event) {
+        ComboItem selectedItem = (ComboItem) comboBoxJeux.getSelectedItem();
+        String dateEmprunt = textFieldDateEmprunt.getText().trim();
+        Date dateRetour = (Date) spinnerDateRetour.getValue();
+
+        if (selectedItem == null) {
+            JOptionPane.showMessageDialog(this, "Veuillez sélectionner un jeu.", "Erreur", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        String sql = "INSERT INTO emprunts (jeu_id, utilisateur_id, date_emprunt, date_retour_prevue) VALUES (?, ?, ?, ?)";
+        String updateSql = "UPDATE jeux SET disponible = FALSE WHERE id = ?";
+        try (PreparedStatement statement = connection.prepareStatement(sql);
+             PreparedStatement updateStatement = connection.prepareStatement(updateSql)) {
+            statement.setInt(1, selectedItem.getValue());
+            statement.setInt(2, this.utilisateurId);
+            statement.setDate(3, java.sql.Date.valueOf(dateEmprunt));
+            statement.setDate(4, new java.sql.Date(dateRetour.getTime()));
+            statement.executeUpdate();
+
+            updateStatement.setInt(1, selectedItem.getValue());
+            updateStatement.executeUpdate();
+
+            JOptionPane.showMessageDialog(this, "Le jeu a été emprunté avec succès.");
+            dispose();
+        } catch (SQLException ex) {
+            JOptionPane.showMessageDialog(this, "Erreur lors de l'emprunt du jeu: " + ex.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    // Dummy function to represent getting the current user's ID
-    private int getCurrentUserId() {
-        return 1; // Assume user ID 1 is logged in, replace with actual user session management logic
+    class ComboItem {
+        private String key;
+        private int value;
+
+        public ComboItem(String key, int value) {
+            this.key = key;
+            this.value = value;
+        }
+
+        @Override
+        public String toString() {
+            return key;
+        }
+
+        public int getValue() {
+            return value;
+        }
     }
 }

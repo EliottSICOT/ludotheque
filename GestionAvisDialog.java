@@ -2,44 +2,50 @@ package ui;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.*;
 
 public class GestionAvisDialog extends JDialog {
-    /**
-	 * 
-	 */
-	private static final long serialVersionUID = 4496153437488667873L;
-	private JComboBox<String> comboBoxJeux; // Supposons que cela contient les titres des jeux
-    private JTextArea avisTextArea;
-    private JSpinner noteSpinner;
+    private static final long serialVersionUID = 1L;
+    private JTextField textFieldJeu;
+    private JTextArea textAreaAvis;
+    private JButton btnSubmit;
 
     public GestionAvisDialog(JFrame parent) {
-        super(parent, "Laisser un avis", true);
-        setLayout(new GridLayout(4, 2, 10, 10));
+        super(parent, "Gestion des Avis", true);
+        setupUI();
+    }
 
-        comboBoxJeux = new JComboBox<>();
-        // Remplir le comboBox avec les titres des jeux
-        add(new JLabel("Jeu :"));
-        add(comboBoxJeux);
-
-        avisTextArea = new JTextArea(5, 20);
-        add(new JLabel("Votre avis :"));
-        add(new JScrollPane(avisTextArea));
-
-        noteSpinner = new JSpinner(new SpinnerNumberModel(5, 0, 10, 1));
-        add(new JLabel("Note :"));
-        add(noteSpinner);
-
-        JButton soumettreAvisButton = new JButton("Soumettre");
-        soumettreAvisButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                // Logique pour enregistrer l'avis dans la base de données
-            }
-        });
-        add(soumettreAvisButton);
-
+    private void setupUI() {
         setSize(400, 300);
-        setLocationRelativeTo(parent);
+        setLayout(new BorderLayout());
+
+        JPanel panelCenter = new JPanel(new GridLayout(2, 2, 10, 10));
+        panelCenter.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        panelCenter.add(new JLabel("Jeu:"));
+        textFieldJeu = new JTextField();
+        panelCenter.add(textFieldJeu);
+        panelCenter.add(new JLabel("Avis:"));
+        textAreaAvis = new JTextArea(5, 20);
+        JScrollPane scrollPane = new JScrollPane(textAreaAvis);
+        panelCenter.add(scrollPane);
+
+        add(panelCenter, BorderLayout.CENTER);
+
+        btnSubmit = new JButton("Soumettre");
+        btnSubmit.addActionListener(e -> submitAvis());
+        JPanel panelSouth = new JPanel();
+        panelSouth.add(btnSubmit);
+        add(panelSouth, BorderLayout.SOUTH);
+    }
+
+    private void submitAvis() {
+        String jeu = textFieldJeu.getText().trim();
+        String avis = textAreaAvis.getText().trim();
+
+        if (jeu.isEmpty() || avis.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Veuillez remplir tous les champs.", "Erreur", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // Logique pour soumettre l'avis
     }
 }

@@ -3,6 +3,7 @@ package ui;
 import javax.swing.*;
 import java.awt.*;
 import java.sql.*;
+import org.mindrot.jbcrypt.BCrypt;
 
 public class ConnexionDialog extends JDialog {
     private static final long serialVersionUID = 8720300844050691923L;
@@ -12,6 +13,7 @@ public class ConnexionDialog extends JDialog {
     private boolean successfulLogin = false;
     private String userRole = "guest";  // Default role
     private String userName;  // User's first name
+    private int userId;  // User's ID
 
     public ConnexionDialog(Frame owner) {
         super(owner, "Connexion", true);
@@ -34,26 +36,30 @@ public class ConnexionDialog extends JDialog {
         add(inputPanel, BorderLayout.CENTER);
 
         // Login button
-        loginButton = new JButton("Login");
+        loginButton = new JButton("Connexion");
         loginButton.addActionListener(e -> attemptLogin(emailField.getText(), new String(passwordField.getPassword())));
         JPanel buttonPanel = new JPanel();
         buttonPanel.add(loginButton);
         add(buttonPanel, BorderLayout.SOUTH);
     }
 
-    // Attempt to log in
     public void attemptLogin(String email, String password) {
         try (Connection conn = DatabaseConnection.getConnection()) {
-            String sql = "SELECT utilisateurs.prenom, roles.role_name FROM utilisateurs JOIN roles ON utilisateurs.role_id = roles.role_id WHERE email = ? AND mot_de_passe = ?";
+            String sql = "SELECT utilisateurs.id, utilisateurs.prenom, roles.role_name, utilisateurs.mot_de_passe FROM utilisateurs JOIN roles ON utilisateurs.role_id = roles.role_id WHERE email = ?";
             PreparedStatement stmt = conn.prepareStatement(sql);
             stmt.setString(1, email);
-            stmt.setString(2, password); // For real application hash password and check
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
-                successfulLogin = true;
-                userName = rs.getString("prenom");
-                userRole = rs.getString("role_name");
-                dispose(); // Close the dialog after successful login
+                String hashedPassword = rs.getString("mot_de_passe");
+                if (BCrypt.checkpw(password, hashedPassword)) {
+                    successfulLogin = true;
+                    userId = rs.getInt("id");
+                    userName = rs.getString("prenom");
+                    userRole = rs.getString("role_name");
+                    dispose(); // Close the dialog after successful login
+                } else {
+                    JOptionPane.showMessageDialog(this, "Identifiants incorrects", "Erreur de connexion", JOptionPane.ERROR_MESSAGE);
+                }
             } else {
                 JOptionPane.showMessageDialog(this, "Identifiants incorrects", "Erreur de connexion", JOptionPane.ERROR_MESSAGE);
             }
@@ -72,5 +78,13 @@ public class ConnexionDialog extends JDialog {
 
     public String getUserName() {
         return userName;
+    }
+
+    public int getUserId() {
+        return userId;
+    }
+    
+    public String getEmail() {
+        return emailField.getText();
     }
 }
